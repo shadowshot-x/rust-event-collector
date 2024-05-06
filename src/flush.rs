@@ -9,7 +9,14 @@ const POD_NAME: &str = "pod0";
 const CONTAINER_NAME: &str = "container0";
 
 pub fn flush_log_file(f_name: &String, aggregate_file: &String, tail_folder: &String, audit_file: &String, output_folder: &String) {
-    let data = read_to_string(aggregate_file).expect("Unable to read file");
+    let data = read_to_string(aggregate_file);
+    let data_string = match data {
+        Ok(data) => data,
+        Err(_) => {
+            println!("File is already parsed");
+            return
+        },
+    };
 
     // Create a file with uuid in filter_folder.
     let orig_file_name = f_name.replace(tail_folder, "");
@@ -24,7 +31,7 @@ pub fn flush_log_file(f_name: &String, aggregate_file: &String, tail_folder: &St
         .expect("Failed to open file");
 
 
-    log_file.write_all(data.as_bytes()).expect("Failed to write to file");
+    log_file.write_all(data_string.as_bytes()).expect("Failed to write to file");
     fs::remove_file(aggregate_file).expect("Unable to delete file");
 
     // record flushed log file names to delete them from source
