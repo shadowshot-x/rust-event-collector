@@ -1,4 +1,0 @@
-./log_files/abc.txt - ./flush_folder/cluster0%2Fnamespace0%2Fpod0%2Fcontainer0-abc%2Etxt-6cb52425-b329-4a08-86ee-08374f15ca69
-./log_files/abc.txt - ./flush_folder/cluster0%2Fnamespace0%2Fpod0%2Fcontainer0-abc%2Etxt-a46d1991-9991-40e2-8a9a-0c39ee22ba2f
-./log_files/abc.txt - ./flush_folder/cluster0%2Fnamespace0%2Fpod0%2Fcontainer0-abc%2Etxt-c955556c-4c63-4c18-bd3f-24f62cca47a2
-./log_files/abc.txt - ./flush_folder/cluster0%2Fnamespace0%2Fpod0%2Fcontainer0-abc%2Etxt-62c985dc-1a40-4caa-9e6f-789690bde010
