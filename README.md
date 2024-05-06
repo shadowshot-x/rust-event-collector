@@ -10,3 +10,9 @@
 2. Fault Tolerant
 3. External Connection
 4. Plugin based architecture
+
+## Milestone 1
+1. Dynamically Read Files from Folder
+2. Record Counter and make sure to Read files from where we left off last.
+3. Keep on Flushing events to Destination (another folder) on flush counter intervals.
+4. All Metadata should be read from config file.

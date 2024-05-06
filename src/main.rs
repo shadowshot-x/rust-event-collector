@@ -38,8 +38,6 @@ fn record_log_counter(counter: &i32, file_name: &String, counter_file: &String) 
     .expect("Failed to open file");
     let counter_string = file_name.to_owned() + " - " + &counter.to_string() + "\n";
     counter_file.write_all(counter_string.as_bytes()).expect("Failed to write to file");
-
-    println!("Recorded Counter: {}", counter);
 }
 
 fn record_log_line(log_line: &string::String, aggregate_file: &String) {
@@ -56,17 +54,17 @@ fn record_log_line(log_line: &string::String, aggregate_file: &String) {
     let log_enriched = format!("{} - {}\n", now_utc.to_string(), log_line);
 
     log_file.write(log_enriched.as_bytes()).expect("Failed to write to file");
-
-    println!("Recorded Log Line: {}", log_line);
 }
 
 fn flush_log_file(f_name: &String, aggregate_file: &String, tail_folder: &String, audit_file: &String, output_folder: &String) {
+
+    let data = read_to_string(aggregate_file).expect("Unable to read file");
 
     // Create a file with uuid in filter_folder.
     let orig_file_name = f_name.replace(tail_folder, "");
     let orig_file_name = orig_file_name.replace(".", "%2E");
     let file_path = &format!("{}{}%2F{}%2F{}%2F{}-{}-{}", output_folder,CLUSTER_NAME, NAMESPACE_NAME, POD_NAME, CONTAINER_NAME, orig_file_name ,Uuid::new_v4());
-    println!("{}",file_path);
+
     let mut log_file = OpenOptions::new()
         .write(true)
         .append(true)
@@ -74,8 +72,6 @@ fn flush_log_file(f_name: &String, aggregate_file: &String, tail_folder: &String
         .open(file_path)
         .expect("Failed to open file");
 
-
-    let data = read_to_string(aggregate_file).expect("Unable to read file");
 
     log_file.write_all(data.as_bytes()).expect("Failed to write to file");
     fs::remove_file(aggregate_file).expect("Unable to delete file");
@@ -90,7 +86,7 @@ fn flush_log_file(f_name: &String, aggregate_file: &String, tail_folder: &String
 
     flushed_log_file.write_all(( f_name.to_string() + " - " + &file_path.to_owned() + "\n").as_bytes()).expect("Failed to write to file");
 
-    println!("Log File Flushed");
+    println!("Log File Flushed - {}", file_path);
 
 }
 
@@ -101,15 +97,10 @@ fn read_large_file(f_name: &String, f_counter: i32, aggregate_file: &String, tai
 
     let mut counter = 0;
     for file_line in file_reader.lines() {
-        // if counter > len(file_reader.lines()) {
-        //     return
-        // }
-        if counter <= f_counter {
+        if counter < f_counter {
             counter +=1;
             continue;
         }
-
-
 
         let log_line = file_line.unwrap();
 
@@ -127,11 +118,11 @@ fn read_large_file(f_name: &String, f_counter: i32, aggregate_file: &String, tai
     }
 }
 
-fn thread_process(counter_map: &HashMap<String, i32>, counter_file: &String, aggregate_file: &String, tail_folder: &String, audit_file: &String, output_folder: &String, rotation_threshold: &i32) {
-    let f_name = "./log_files/abc.txt".to_string();
+fn thread_process(counter_map: &HashMap<String, i32>, counter_file: &String, aggregate_file: &String, tail_file_name: &String, tail_folder: &String, audit_file: &String, output_folder: &String, rotation_threshold: &i32) {
+    let f_name = tail_folder.to_owned() + tail_file_name;
 
     let f_counter = boot_thread(counter_map, &f_name);
-    println!("{}", f_counter);
+    println!("COUNTER LOCATION FOR FILE - {} is {}", f_name, f_counter);
     read_large_file(&f_name, f_counter, aggregate_file, tail_folder, audit_file, counter_file, output_folder, rotation_threshold);
 
 }
@@ -191,9 +182,11 @@ fn main() {
     //     thread_process(counter_map, &counter_file, &aggregate_file, &tail_folder, &audit_file, &output_folder, &rotation_threshold);
     // };
 
-    // let paths = fs::read_dir(&tail_folder).unwrap();
-    // for path in paths {
-    // }
+    let paths = fs::read_dir(&tail_folder).unwrap();
+    for path in paths {
+        
+        let tail_file_name = path.unwrap().path().file_name().unwrap().to_string_lossy().into_owned(); // path.path().file_name().unwrap().to_string_lossy().into_owned()
 
-    thread_process(&counter_map, &counter_file, &aggregate_file, &tail_folder, &audit_file, &output_folder, &rotation_threshold);
+        thread_process(&counter_map, &counter_file, &aggregate_file, &tail_file_name, &tail_folder, &audit_file, &output_folder, &rotation_threshold);
+    }
 }
