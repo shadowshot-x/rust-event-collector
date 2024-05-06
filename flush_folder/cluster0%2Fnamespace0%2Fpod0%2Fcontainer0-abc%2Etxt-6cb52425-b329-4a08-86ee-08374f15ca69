@@ -1,0 +1,4 @@
+2024-05-06 05:36:00.416744 UTC - (cluster0) - (namespace0) - (pod0) - (container0) - Log Line 2
+2024-05-06 05:36:00.417077 UTC - (cluster0) - (namespace0) - (pod0) - (container0) - Log Line 3
+2024-05-06 05:36:00.417356 UTC - (cluster1) - (namespace0) - (pod0) - (container0) - Log Line 4
+2024-05-06 05:36:00.417590 UTC - (cluster0) - (namespace0) - (pod0) - (container0) - Log Line 5
