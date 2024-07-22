@@ -7,7 +7,10 @@ pub fn record_counters(counter_file_name: &String) -> HashMap<String, i32> {
     let mut counter_map:HashMap<String, i32>  = HashMap::new();
 
     // for each counter file, read each line and update counter map based on file name
-    let file = File::open(counter_file_name).expect("Failed to Read file");
+    let file = match File::open(counter_file_name){
+        Ok(file) => file,
+        Err(_) => File::create(counter_file_name).expect("Failed to create counter file"),
+    };
 
     let file_reader = BufReader::new(file);
     
