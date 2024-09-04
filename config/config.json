@@ -2,7 +2,7 @@
     "counter_file" : "./data/counter.txt",
     "aggregate_file" : "./data/log_aggregated_file.txt",
     "tail_folder" : "./log_files/",
-    "audit_file":"./data/flush_counter.txt",
+    "audit_file":"./data/audit.txt",
     "flush" : {
         "mode" : "folder",
         "location" : "./flush_folder/",

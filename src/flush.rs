@@ -1,4 +1,4 @@
-use std::fs::{self, read_to_string, OpenOptions};
+use std::fs::{read_to_string, OpenOptions};
 use std::io::Write;
 use uuid::Uuid;
 
@@ -21,7 +21,7 @@ pub fn flush_log_file(f_name: &String, aggregate_file: &String, tail_folder: &St
     // Create a file with uuid in filter_folder.
     let orig_file_name = f_name.replace(tail_folder, "");
     let orig_file_name = orig_file_name.replace(".", "%2E");
-    let file_path = &format!("{}{}%2F{}%2F{}%2F{}-{}-{}", output_folder, CLUSTER_NAME,  NAMESPACE_NAME,  POD_NAME, CONTAINER_NAME, orig_file_name ,Uuid::new_v4());
+    let file_path: &String = &format!("{}{}%2F{}%2F{}%2F{}-{}-{}", output_folder, CLUSTER_NAME,  NAMESPACE_NAME,  POD_NAME, CONTAINER_NAME, orig_file_name ,Uuid::new_v4());
 
     let mut log_file = OpenOptions::new()
         .write(true)
@@ -32,7 +32,14 @@ pub fn flush_log_file(f_name: &String, aggregate_file: &String, tail_folder: &St
 
 
     log_file.write_all(data_string.as_bytes()).expect("Failed to write to file");
-    fs::remove_file(aggregate_file).expect("Unable to delete file");
+    // fs::remove_file(aggregate_file).expect("Unable to delete file");
+    let _ = match std::fs::OpenOptions::new().read(true).write(true).truncate(true).open(aggregate_file){
+        Ok(data) => data,
+        Err(err) => {
+            println!("Error while cleaning Aggregate File :  {}", err);
+            return
+        },
+    };
 
     // record flushed log file names to delete them from source
     let mut flushed_log_file = OpenOptions::new()
