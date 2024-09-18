@@ -2,13 +2,16 @@ use std::fs::{self, File};
 use std::io::{BufRead, BufReader};
 use std::collections::HashMap;
 use std::sync::{Mutex, Arc};
+use tokio::sync::mpsc;
+use chrono;
 
 mod config;
 mod counter;
 mod util;
 mod flush;
+mod metrics;
 
-fn read_large_file(f_name: &String, f_counter: i32, aggregate_file: &String, tail_folder: &String, audit_file: &String, counter_file: &String, output_folder: &String, rotation_threshold: &i32, aggregate_counter_mutex: &Arc<Mutex<i32>>) {
+async fn read_large_file(thread_channel: &tokio::sync::mpsc::Sender<String>, f_name: &String, f_counter: i32, aggregate_file: &String, tail_folder: &String, audit_file: &String, counter_file: &String, output_folder: &String, rotation_threshold: &i32, aggregate_counter_mutex: &Arc<Mutex<i32>>) {
     // Open the file to tail
     let file = File::open(f_name).expect("Failed to Read file");
 
@@ -20,6 +23,12 @@ fn read_large_file(f_name: &String, f_counter: i32, aggregate_file: &String, tai
         if counter < f_counter {
             counter +=1;
             continue;
+        }
+
+        if counter % 5 == 0{
+            let current_timestamp = chrono::offset::Utc::now();
+            let metric_string = current_timestamp.to_string() + " : file_counter : {" + f_name + "," + &counter.clone().to_string() + "}";
+            thread_channel.send(metric_string).await.unwrap();
         }
 
         let log_line = file_line.unwrap();
@@ -53,7 +62,7 @@ fn read_large_file(f_name: &String, f_counter: i32, aggregate_file: &String, tai
     }
 }
 
-async fn thread_process(counter_map: &HashMap<String, i32>, counter_file: &String, aggregate_file: &String, tail_file_name: &String, tail_folder: &String, audit_file: &String, output_folder: &String, rotation_threshold: &i32, counter: &i32, aggregate_counter_mutex: &Arc<Mutex<i32>>) -> i32 {
+async fn thread_process(thread_channel: &tokio::sync::mpsc::Sender<String>, counter_map: &HashMap<String, i32>, counter_file: &String, aggregate_file: &String, tail_file_name: &String, tail_folder: &String, audit_file: &String, output_folder: &String, rotation_threshold: &i32, counter: &i32, aggregate_counter_mutex: &Arc<Mutex<i32>>) -> i32 {
     // Calculate the path of the file to be tailed.
     let f_name = tail_folder.to_owned() + tail_file_name;
 
@@ -62,7 +71,7 @@ async fn thread_process(counter_map: &HashMap<String, i32>, counter_file: &Strin
     println!("COUNTER LOCATION FOR FILE - {} is {}", f_name, f_counter);
 
     // Start reading the log file
-    read_large_file(&f_name, f_counter, aggregate_file, tail_folder, audit_file, counter_file, output_folder, rotation_threshold, aggregate_counter_mutex);
+    read_large_file(&thread_channel, &f_name, f_counter, aggregate_file, tail_folder, audit_file, counter_file, output_folder, rotation_threshold, aggregate_counter_mutex).await;
 
     return counter.clone();
 }
@@ -84,9 +93,12 @@ async fn main() {
 
     let mut counter = 0;
 
+    let (tx, mut rx) = mpsc::channel(32);
+
     let aggregate_file_counter = Arc::new(Mutex::new(0));
 
     for path in paths {
+        let thread_channel:tokio::sync::mpsc::Sender<String> = tx.clone();
         let tail_file_name = path.unwrap().path().file_name().unwrap().to_string_lossy().into_owned();
         println!("Rust Map File {}", tail_file_name);
         let native_counter_map = counter_map.clone();
@@ -100,11 +112,15 @@ async fn main() {
         
         // start the thread to process the file.
         join_set.spawn(async move {
-            thread_process(&native_counter_map, &counter_file, &aggregate_file, &tail_file_name, &tail_folder, &audit_file, &output_folder, &rotation_threshold, &counter, &aggregate_file_counter).await;
+            thread_process(&thread_channel, &native_counter_map, &counter_file, &aggregate_file, &tail_file_name, &tail_folder, &audit_file, &output_folder, &rotation_threshold, &counter, &aggregate_file_counter).await;
         });
 
         counter = counter + 1;
     }
+
+    join_set.spawn(async move {
+        metrics::handle_receiver(&mut rx).await;
+    });
 
     // let mut seen = [false; 10];
     while let Some(_) = join_set.join_next().await {
